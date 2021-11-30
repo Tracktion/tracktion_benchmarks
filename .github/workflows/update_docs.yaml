@@ -1,0 +1,20 @@
+name: Update Database
+on:
+  schedule:
+    - cron: '* 0 * * *'
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2 
+
+      - name: Update Database
+        with:
+          AT_BASE_ID: ${{ secrets.AT_BASE_ID }}
+          AT_API_KEY: ${{ secrets.AT_API_KEY }}
+        run: |
+          python3 update_benchmarks.py $AT_BASE_ID $AT_API_KEY benchmarks.js
