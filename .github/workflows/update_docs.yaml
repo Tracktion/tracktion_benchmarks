@@ -16,5 +16,6 @@ jobs:
         with:
           AT_BASE_ID: ${{ secrets.AT_BASE_ID }}
           AT_API_KEY: ${{ secrets.AT_API_KEY }}
+        shell: bash
         run: |
           python3 update_benchmarks.py $AT_BASE_ID $AT_API_KEY benchmarks.js
