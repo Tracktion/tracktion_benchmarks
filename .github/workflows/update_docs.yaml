@@ -2,7 +2,6 @@ name: Update Database
 on:
   schedule:
     - cron: '* 0 * * *'
-  push:
   workflow_dispatch:
 
 jobs:
@@ -14,3 +13,9 @@ jobs:
 
       - name: Update Database
         run: python3 update_benchmarks.py ${{ secrets.AT_BASE_ID }} ${{ secrets.AT_API_KEY }} benchmarks.js
+
+      - name: Publish changes
+        uses: EndBug/add-and-commit@v7
+        with:
+          message: 'Updated database'
+          default_author: github_actions
