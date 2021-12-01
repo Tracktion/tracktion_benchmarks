@@ -40,8 +40,11 @@ while offset:
   obj2 = readContent ("&offset=" + offset)
   records.extend (obj2["records"])
   offset = obj2.get ("offset")
-  
+
 print ("Num benchmarks: {}".format (len (records)))
+
+if obj.get ("offset"):
+  obj.pop ("offset")
 
 # Overwrite js file with newly downloaded data
 if os.path.exists (FILE_NAME):
