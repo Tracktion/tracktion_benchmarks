@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import urllib.request, json, os, sys
+import urllib.request, json, os, sys, time
 
 # Parse args
 if len (sys.argv) < 4:
@@ -22,6 +22,7 @@ def readContent (offset):
   
   if response.status == 422 and retries > 0:
     retries -= 1
+    time.sleep (30) # Wait for limits to be freed up
     return readContent (offset)
 
   return json.loads (response.read())
