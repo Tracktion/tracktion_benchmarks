@@ -10,48 +10,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
   <script type="text/javascript" src="benchmarks.js"></script>
   <script>
-    // var baseID = "app7ciI2i7URUtxUw";
-    // var apiKey = "keyiTOaUByedY8vrY";
-
-    // function httpGetAsync(theUrl, auth, callback)
-    // {
-    //     var xmlHttp = new XMLHttpRequest();
-    //     xmlHttp.onreadystatechange = function() { 
-    //         if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
-    //             callback(xmlHttp.responseText);
-    //     }
-
-    //     xmlHttp.open("GET", theUrl, true); // true for asynchronous 
-
-    //     if (auth)
-    //       xmlHttp.setRequestHeader('Authorization', auth);
-
-    //     xmlHttp.send(null);
-    // }
-
-    // httpGetAsync ("https://api.airtable.com/v0/app7ciI2i7URUtxUw/benchmarks?&view=Grid%20view",
-    //               "Bearer keyiTOaUByedY8vrY",
-    //              function (res) { console.log (res); parseRecords (JSON.parse (res)); });
-
     parseRecords (JSON.parse (benchmarks));
 
-    function parseRecords (recordsObj)
+    function parseRecords (records)
     {
       charts.innerHTML = "";
 
-      let records = recordsObj.records;
       var hashes = new Set();
       var hashAndFields = new Map();
 
       records.forEach (element =>
       {
-        let hash = element.fields.Hash;
+        let hash = element.benchmark_hash;
         hashes.add (hash);
 
         if (! Array.isArray (hashAndFields.get (hash)))
           hashAndFields.set (hash, []);
 
-        hashAndFields.get (hash).push (element.fields);
+        hashAndFields.get (hash).push (element);
       });
 
       hashAndFields.forEach (function (value, key, map)
@@ -62,11 +38,11 @@
 
         value.forEach (field =>
         {
-          xValues.push (field.Date);
-          yValues.push (field.Ticks);
-          name = field.Name;
-          description = field.Description;
-          platform = field.Platform;
+          xValues.push (field.benchmark_time);
+          yValues.push (field.benchmark_ticks);
+          name = field.benchmark_name;
+          description = field.benchmark_description;
+          platform = field.benchmark_platform;
         });
 
         addChart (key, name, platform + "/" + description,
