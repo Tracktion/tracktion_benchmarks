@@ -1,0 +1,29 @@
+#!/bin/bash -e
+
+BM_API_KEY=$1
+DEST_FILE=$2
+
+if [ -z $BM_API_KEY ]; then
+    echo "API Key required as first arg";
+    exit 1;
+fi
+
+if [ -z $BM_API_KEY ]; then
+    echo "Dest file required as second arg";
+    exit 1;
+fi
+
+ROOT=$(cd "$(dirname "$0")"; pwd)
+cd $ROOT
+
+RESULT=$(
+    curl https://appstats.tracktion.com/benchmarkapi.php \
+        -H "User-Agent: Mozilla/2.2" \
+        -d api_key=$BM_API_KEY \
+        -d request=fetch_results \
+        --request POST 
+);
+
+OUTPUT="var benchmarks = '"$RESULT"'";
+touch $DEST_FILE
+echo "$OUTPUT" > $DEST_FILE
