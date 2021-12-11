@@ -3,32 +3,105 @@
 <head>
   <meta charset="utf-8" />
   <title>Tracktion Benchmarks</title>
-</head>
-<body>
+  <style>
+    body      { background-color: white; }
+    #charts   { max-width: 1000px; }
+    select    { max-width: 250px; }
+  </style>
+  </head>
+<body onload="update()">
   <h1>Tracktion Benchmarks</h1>
+
+  <label for="categories_list">Categories:</label>
+  <select id="categories_list" oninput="update();"></select>
+
+  <label for="names_list">Name:</label>
+  <select id="names_list" oninput="update();"></select>
+
+  <label for="descriptions_list">Description:</label>
+  <select id="descriptions_list" oninput="update();"></select>
+
+  <label for="platforms_list">Platform:</label>
+  <select id="platforms_list" oninput="update();"></select>
+  
+  <br/><br/>
+  <hr/>
+  <br/>
+  
   <div id="charts"></div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
   <script type="text/javascript" src="benchmarks.js"></script>
   <script>
-    parseRecords (JSON.parse (benchmarks));
+    const allBenchmarks = JSON.parse (benchmarks);
+    
+    var hashes = new Set();
+    var categories = new Set();
+    var names = new Set();
+    var descriptions = new Set();
+    var platforms = new Set();
+    var hashAndFields = new Map();
 
-    function parseRecords (records)
+    buildSets();
+    updateMenus();
+
+    function buildSets()
     {
-      charts.innerHTML = "";
-
-      var hashes = new Set();
-      var hashAndFields = new Map();
-
-      records.forEach (element =>
+      allBenchmarks.forEach (element =>
       {
         let hash = element.benchmark_hash;
         hashes.add (hash);
+        categories.add (element.benchmark_category);
+        names.add (element.benchmark_name);
+        descriptions.add (element.benchmark_description);
+        platforms.add (element.benchmark_platform);
 
         if (! Array.isArray (hashAndFields.get (hash)))
           hashAndFields.set (hash, []);
 
         hashAndFields.get (hash).push (element);
       });
+    }
+
+    function updateMenus()
+    {
+      categories_list.innerHTML = "";
+      names_list.innerHTML = "";
+      descriptions_list.innerHTML = "";
+      platforms_list.innerHTML = "";
+
+      function populateOptions (list, menuItems)
+      {
+        list.innerHTML = "";
+
+        var option = document.createElement ('option');
+        option.value = "All";
+        option.innerHTML = option.value;
+        list.appendChild (option);
+
+        menuItems.forEach (menuItem =>
+        {
+          var option = document.createElement ('option');
+          option.value = menuItem;
+          option.innerHTML = option.value;
+          list.appendChild (option);
+        });
+      };
+
+      populateOptions (categories_list, categories);
+      populateOptions (names_list, names);
+      populateOptions (descriptions_list, descriptions);
+      populateOptions (platforms_list, platforms);
+    }
+
+    function parseRecords()
+    {
+      const categoryToShow    = categories_list.value;
+      const nameToShow        = names_list.value;
+      const descriptionToShow = descriptions_list.value;
+      const platformToShow    = platforms_list.value;
+      
+      charts.innerHTML = "";
 
       hashAndFields.forEach (function (value, key, map)
       {
@@ -39,14 +112,22 @@
         value.forEach (field =>
         {
           xValues.push (field.benchmark_time);
-          yValues.push (field.benchmark_ticks);
-          name = field.benchmark_name;
+          yValues.push (field.benchmark_duration);
+
+          category    = field.benchmark_category;
+          name        = field.benchmark_name;
           description = field.benchmark_description;
-          platform = field.benchmark_platform;
+          platform    = field.benchmark_platform;
         });
 
-        addChart (key, name, platform + "/" + description,
-                  xValues, yValues);
+        if ((categoryToShow == "All" || categoryToShow == category)
+            && (nameToShow == "All" || nameToShow == name)
+            && (descriptionToShow == "All" || descriptionToShow == description)
+            && (platformToShow == "All" || platformToShow == platform))
+        {
+          addChart (key, name, platform + "/" + description,
+                    xValues, yValues);
+        }
       });
     }
 
@@ -75,6 +156,11 @@
           }
         }
       });
+    }
+
+    function update()
+    {
+      parseRecords();
     }
   </script>
 </body>
