@@ -6,7 +6,8 @@
   <style>
     body      { background-color: white; }
     #charts   { max-width: 1000px; }
-    select    { max-width: 250px; }
+    select    { max-width: 250px; margin-right: 20px; }
+    .tickboxes  { padding-right: 30px; }
   </style>
   </head>
 <body onload="update()">
@@ -25,22 +26,46 @@
   <select id="platforms_list" oninput="update();"></select>
   
   <br/><br/>
+  <input type="checkbox" id="show_minmax_button" name="minmax_name" checked oninput="update();">
+  <label class="tickboxes" for="minmax_name">Show min/max</label>
+
+  <input type="checkbox" id="show_variance_button" name="variance_name" oninput="update();">
+  <label class="tickboxes"for="variance_name">Show variance</label>
+
+  <br/><br/>
   <hr/>
   <br/>
   
   <div id="charts"></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  
   <script type="text/javascript" src="benchmarks.js"></script>
   <script>
     const allBenchmarks = JSON.parse (benchmarks);
     
+    var categoryToShow;
+    var nameToShow;
+    var descriptionToShow;
+    var platformToShow;
+    var showMinMax;
+    var showVariances;
+
     var hashes = new Set();
     var categories = new Set();
     var names = new Set();
     var descriptions = new Set();
     var platforms = new Set();
     var hashAndFields = new Map();
+
+    function Values()
+    {
+      var dateTimes = [];
+      var durations = [];
+      var minimums = [];
+      var maximums = [];
+      var variances = [];
+    };
+    var hashAndValues = new Map();
 
     buildSets();
     updateMenus();
@@ -60,6 +85,31 @@
           hashAndFields.set (hash, []);
 
         hashAndFields.get (hash).push (element);
+
+        if (! hashAndValues.get (hash))
+          hashAndValues.set (hash, new Values());
+
+        var values = hashAndValues.get (hash);
+
+        if (! values.category)    values.category     = element.benchmark_category;
+        if (! values.name)        values.name         = element.benchmark_name;
+        if (! values.description) values.description  = element.benchmark_description;
+        if (! values.platform)    values.platform     = element.benchmark_platform;
+
+        if (! values.dateTimes)   values.dateTimes    = new Array();
+        if (! values.durations)   values.durations    = new Array();
+        if (! values.minimums)    values.minimums     = new Array();
+        if (! values.maximums)    values.maximums     = new Array();
+        if (! values.variances)   values.variances    = new Array();
+        
+        values.dateTimes.push (element.benchmark_time);
+        values.durations.push (element.benchmark_duration);
+        // values.minimums.push (element.benchmark_duration * 0.9); // Test data
+        // values.maximums.push (element.benchmark_duration * 1.1);
+        // values.variances.push (element.benchmark_duration * 0.5);
+        values.minimums.push (element.benchmark_duration_min);
+        values.maximums.push (element.benchmark_duration_max);
+        values.variances.push (element.benchmark_duration_variance);
       });
     }
 
@@ -94,73 +144,118 @@
       populateOptions (platforms_list, platforms);
     }
 
-    function parseRecords()
+    function addChart (hash, values)
     {
-      const categoryToShow    = categories_list.value;
-      const nameToShow        = names_list.value;
-      const descriptionToShow = descriptions_list.value;
-      const platformToShow    = platforms_list.value;
-      
-      charts.innerHTML = "";
+      const title = values.name + ' (' + values.platform + ')';
+      const subtitle = values.description;
 
-      hashAndFields.forEach (function (value, key, map)
-      {
-        var xValues = [];
-        var yValues = [];
-        var name = "", description = "", platform;
-
-        value.forEach (field =>
-        {
-          xValues.push (field.benchmark_time);
-          yValues.push (field.benchmark_duration);
-
-          category    = field.benchmark_category;
-          name        = field.benchmark_name;
-          description = field.benchmark_description;
-          platform    = field.benchmark_platform;
-        });
-
-        if ((categoryToShow == "All" || categoryToShow == category)
-            && (nameToShow == "All" || nameToShow == name)
-            && (descriptionToShow == "All" || descriptionToShow == description)
-            && (platformToShow == "All" || platformToShow == platform))
-        {
-          addChart (key, name, platform + "/" + description,
-                    xValues, yValues);
-        }
-      });
-    }
-
-    function addChart (hash, title, subtitle, xValues, yValues)
-    {
       var canvas = document.createElement ('canvas');
       canvas.id = hash;
       canvas.style="width:100%";
       charts.appendChild (canvas);
 
+      const red     = 'rgb(255, 99, 132)';
+      const orange  = 'rgb(255, 159, 64)';
+      const yellow  = 'rgb(255, 205, 86)';
+      const green   = 'rgb(75, 192, 192)';
+      const blue    = 'rgb(54, 162, 235)';
+      const purple  = 'rgb(153, 102, 255)';
+      const grey    = 'rgb(201, 203, 207)';
+      const transparent = '#00000000';
+      const translucentYellow  = '#ffcd5644';
+      const translucentBlue  = '#36a2eb11';
+
+      var scales = {
+            y: {},
+          };
+
+      var datasets = [];
+      datasets.push ({ label: 'Duration', data: values.durations, lineTension: 0, backgroundColor: blue, borderColor: blue  });
+
+      if (showMinMax)
+      {
+        datasets.push ({ label: 'Min', data: values.minimums, lineTension: 0, backgroundColor: translucentBlue, borderColor: green, fill: '+1' });
+        datasets.push ({ label: 'Max', data: values.maximums, lineTension: 0, backgroundColor: translucentBlue, borderColor: red });
+      }
+
+      if (showVariances)
+      {
+        datasets.push ({ label: 'Var', data: values.variances, lineTension: 0, backgroundColor: purple, borderColor: purple, yAxisID: 'varianceScale' });
+        scales.varianceScale =
+          {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            grid: {
+              drawOnChartArea: false, // only want the grid lines for one axis to show up
+            },
+          };
+      }
+
       var chart = new Chart (canvas.id, {
         type: "line",
         data: {
-          labels: xValues,
-          datasets: [{
-            label: subtitle,
-            data: yValues,
-            lineTension: 0
-          }]
+          labels: values.dateTimes,
+          datasets
         },
         options: {
           responsive: true,
           title: {
             display: true,
             text: [ title ]
-          }
+          },
+          scales,
+          interaction: {
+            intersect: false,
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: title,
+            },
+            subtitle: {
+              display: true,
+              text: subtitle,
+              font: {
+                size: 12,
+                style: 'italic'
+              },
+              padding: {
+                bottom: 10
+              }
+            },
+            filler: {
+              propagate: false
+            },
+            'samples-filler-analyser': {
+              target: 'chart-analyser'
+            }
+          },
         }
       });
     }
 
     function update()
     {
-      parseRecords();
+      categoryToShow    = categories_list.value;
+      nameToShow        = names_list.value;
+      descriptionToShow = descriptions_list.value;
+      platformToShow    = platforms_list.value;
+      showMinMax        = show_minmax_button.checked;
+      showVariances     = show_variance_button.checked;
+
+      charts.innerHTML = "";
+
+      hashAndValues.forEach (function (values, hash)
+      {
+        if ((categoryToShow == "All" || categoryToShow == values.category)
+            && (nameToShow == "All" || nameToShow == values.name)
+            && (descriptionToShow == "All" || descriptionToShow == values.description)
+            && (platformToShow == "All" || platformToShow == values.platform))
+        {
+          addChart (hash, values);
+        }
+      });
     }
   </script>
 </body>
