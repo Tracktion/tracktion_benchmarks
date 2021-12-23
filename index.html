@@ -26,6 +26,9 @@
   <select id="platforms_list" oninput="update();"></select>
   
   <br/><br/>
+  <input type="checkbox" id="show_total_button" name="total_name" checked oninput="update();">
+  <label class="tickboxes" for="total_name">Show total</label>
+
   <input type="checkbox" id="show_minmax_button" name="minmax_name" checked oninput="update();">
   <label class="tickboxes" for="minmax_name">Show min/max</label>
 
@@ -47,7 +50,8 @@
     var nameToShow;
     var descriptionToShow;
     var platformToShow;
-    var showMinMax;
+    var showTotal;
+    var showMinMaxMean;
     var showVariances;
 
     var hashes = new Set();
@@ -170,12 +174,17 @@
           };
 
       var datasets = [];
-      datasets.push ({ label: 'Duration', data: values.durations, lineTension: 0, backgroundColor: blue, borderColor: blue  });
 
-      if (showMinMax)
+      if (showTotal)
+      {
+        datasets.push ({ label: 'Duration', data: values.durations, lineTension: 0, backgroundColor: blue, borderColor: blue  });
+      }
+
+      if (showMinMaxMean)
       {
         datasets.push ({ label: 'Min', data: values.minimums, lineTension: 0, backgroundColor: translucentBlue, borderColor: green, fill: '+1' });
         datasets.push ({ label: 'Max', data: values.maximums, lineTension: 0, backgroundColor: translucentBlue, borderColor: red });
+        datasets.push ({ label: 'Mean', data: values.means, lineTension: 0, backgroundColor: translucentBlue, borderColor: translucentBlue });
       }
 
       if (showVariances)
@@ -241,7 +250,8 @@
       nameToShow        = names_list.value;
       descriptionToShow = descriptions_list.value;
       platformToShow    = platforms_list.value;
-      showMinMax        = show_minmax_button.checked;
+      showTotal         = show_total_button.checked;
+      showMinMaxMean    = show_minmax_button.checked;
       showVariances     = show_variance_button.checked;
 
       charts.innerHTML = "";
