@@ -67,6 +67,7 @@
       var durations = [];
       var minimums = [];
       var maximums = [];
+      var means = [];
       var variances = [];
     };
     var hashAndValues = new Map();
@@ -104,6 +105,7 @@
         if (! values.durations)   values.durations    = new Array();
         if (! values.minimums)    values.minimums     = new Array();
         if (! values.maximums)    values.maximums     = new Array();
+        if (! values.means)       values.means        = new Array();
         if (! values.variances)   values.variances    = new Array();
         
         values.dateTimes.push (element.benchmark_time);
@@ -113,6 +115,7 @@
         // values.variances.push (element.benchmark_duration * 0.5);
         values.minimums.push (element.benchmark_duration_min);
         values.maximums.push (element.benchmark_duration_max);
+        values.means.push (element.benchmark_duration_mean);        
         values.variances.push (element.benchmark_duration_variance);
       });
     }
@@ -165,9 +168,10 @@
       const blue    = 'rgb(54, 162, 235)';
       const purple  = 'rgb(153, 102, 255)';
       const grey    = 'rgb(201, 203, 207)';
-      const transparent = '#00000000';
-      const translucentYellow  = '#ffcd5644';
-      const translucentBlue  = '#36a2eb11';
+      const transparent         = '#00000000';
+      const translucentYellow   = '#ffcd5644';
+      const translucentBlue     = '#36a2eb11';
+      const lightBlue           = '#36a2ebaa';
 
       var scales = {
             y: {},
@@ -184,7 +188,7 @@
       {
         datasets.push ({ label: 'Min', data: values.minimums, lineTension: 0, backgroundColor: translucentBlue, borderColor: green, fill: '+1' });
         datasets.push ({ label: 'Max', data: values.maximums, lineTension: 0, backgroundColor: translucentBlue, borderColor: red });
-        datasets.push ({ label: 'Mean', data: values.means, lineTension: 0, backgroundColor: translucentBlue, borderColor: translucentBlue });
+        datasets.push ({ label: 'Mean', data: values.means, lineTension: 0, backgroundColor: translucentBlue, borderColor: lightBlue });
       }
 
       if (showVariances)
