@@ -8,48 +8,80 @@
     #charts   { max-width: 1000px; }
     select    { max-width: 250px; margin-right: 20px; }
     .tickboxes  { padding-right: 30px; }
+
+  .loader {
+      border: 10px solid #f3f3f3; /* Light grey */
+      border-top: 10px solid #3498db; /* Blue */
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+      margin: auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
   </head>
-<body onload="update()">
+<body onload="buildMenus()">
   <h1>Tracktion Benchmarks</h1>
 
   <label for="categories_list">Categories:</label>
-  <select id="categories_list" oninput="update();"></select>
+  <select id="categories_list"></select>
 
   <label for="names_list">Name:</label>
-  <select id="names_list" oninput="update();"></select>
+  <select id="names_list"></select>
 
   <label for="descriptions_list">Description:</label>
-  <select id="descriptions_list" oninput="update();"></select>
+  <select id="descriptions_list"></select>
 
   <label for="platforms_list">Platform:</label>
-  <select id="platforms_list" oninput="update();"></select>
+  <select id="platforms_list"></select>
   
   <br/><br/>
-  <input type="checkbox" id="show_total_button" name="total_name" checked oninput="update();">
+  <input type="checkbox" id="show_total_button" name="total_name" checked oninput="updateGraphs();">
   <label class="tickboxes" for="total_name">Show total</label>
 
-  <input type="checkbox" id="show_minmax_button" name="minmax_name" checked oninput="update();">
+  <input type="checkbox" id="show_minmax_button" name="minmax_name" checked oninput="updateGraphs();">
   <label class="tickboxes" for="minmax_name">Show min/max</label>
 
-  <input type="checkbox" id="show_variance_button" name="variance_name" oninput="update();">
+  <input type="checkbox" id="show_variance_button" name="variance_name" oninput="updateGraphs();">
   <label class="tickboxes"for="variance_name">Show variance</label>
+
+  <br/><br/>
+  <button id="fetch_results_button" type="button" onclick="fetchResults();">Update Results</button>
 
   <br/><br/>
   <hr/>
   <br/>
-  
+  <div id="loader" class="loader" style="display:none"></div>
   <div id="charts"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  
-  <script type="text/javascript" src="benchmarks.js"></script>
+  <!-- <script type="text/javascript" src="benchmarks.js"></script> -->
   <script>
-    const allBenchmarks = JSON.parse (benchmarks);
-    
-    var categoryToShow;
-    var nameToShow;
-    var descriptionToShow;
-    var platformToShow;
+    var getJSON = function (url, paramString, callback)
+    {
+      console.log (paramString);
+        var xhr = new XMLHttpRequest();
+        xhr.open ('POST', url, true);
+        xhr.setRequestHeader ("Content-Type", "application/x-www-form-urlencoded");
+        xhr.responseType = 'json';
+
+        xhr.onload = function()
+        {
+          var status = xhr.status;
+          if (status === 200)
+            callback (null, xhr.response);
+          else
+            callback (status, xhr.response);
+        };
+
+        xhr.send (paramString);
+    };
+
     var showTotal;
     var showMinMaxMean;
     var showVariances;
@@ -59,66 +91,8 @@
     var names = new Set();
     var descriptions = new Set();
     var platforms = new Set();
-    var hashAndFields = new Map();
 
-    function Values()
-    {
-      var dateTimes = [];
-      var durations = [];
-      var minimums = [];
-      var maximums = [];
-      var means = [];
-      var variances = [];
-    };
-    var hashAndValues = new Map();
-
-    buildSets();
-    updateMenus();
-
-    function buildSets()
-    {
-      allBenchmarks.forEach (element =>
-      {
-        let hash = element.benchmark_hash;
-        hashes.add (hash);
-        categories.add (element.benchmark_category);
-        names.add (element.benchmark_name);
-        descriptions.add (element.benchmark_description);
-        platforms.add (element.benchmark_platform);
-
-        if (! Array.isArray (hashAndFields.get (hash)))
-          hashAndFields.set (hash, []);
-
-        hashAndFields.get (hash).push (element);
-
-        if (! hashAndValues.get (hash))
-          hashAndValues.set (hash, new Values());
-
-        var values = hashAndValues.get (hash);
-
-        if (! values.category)    values.category     = element.benchmark_category;
-        if (! values.name)        values.name         = element.benchmark_name;
-        if (! values.description) values.description  = element.benchmark_description;
-        if (! values.platform)    values.platform     = element.benchmark_platform;
-
-        if (! values.dateTimes)   values.dateTimes    = new Array();
-        if (! values.durations)   values.durations    = new Array();
-        if (! values.minimums)    values.minimums     = new Array();
-        if (! values.maximums)    values.maximums     = new Array();
-        if (! values.means)       values.means        = new Array();
-        if (! values.variances)   values.variances    = new Array();
-        
-        values.dateTimes.push (element.benchmark_time);
-        values.durations.push (element.benchmark_duration);
-        // values.minimums.push (element.benchmark_duration * 0.9); // Test data
-        // values.maximums.push (element.benchmark_duration * 1.1);
-        // values.variances.push (element.benchmark_duration * 0.5);
-        values.minimums.push (element.benchmark_duration_min);
-        values.maximums.push (element.benchmark_duration_max);
-        values.means.push (element.benchmark_duration_mean);        
-        values.variances.push (element.benchmark_duration_variance);
-      });
-    }
+    var currentResults = new Map();
 
     function updateMenus()
     {
@@ -149,6 +123,29 @@
       populateOptions (names_list, names);
       populateOptions (descriptions_list, descriptions);
       populateOptions (platforms_list, platforms);
+    }
+
+    function buildMenus()
+    {
+      var filterString = "";
+
+      if (categories_list.value != "All")     filterString += '&benchmark_category=' + categories_list.value;
+      if (names_list.value != "All")          filterString += '&benchmark_name=' + names_list.value;
+      if (descriptions_list.value != "All")   filterString += '&benchmark_description=' + descriptions_list.value;
+      if (platforms_list.value != "All")      filterString += '&benchmark_platform=' + platforms_list.value;
+
+      document.getElementById ("loader").style.display = "block";
+      getJSON ("https://appstats.tracktion.com/benchmarkapi.php", "request=fetch_menus" + filterString, function (status, res)
+      {
+        document.getElementById ("loader").style.display = "none";
+        hashes        = res["benchmark_hash"];
+        categories    = res["benchmark_category"];
+        names         = res["benchmark_name"];
+        descriptions  = res["benchmark_description"];
+        platforms     = res["benchmark_platform"];
+
+        updateMenus();
+      });
     }
 
     function addChart (hash, values)
@@ -248,28 +245,71 @@
       });
     }
 
-    function update()
+    function fetchResults()
     {
-      categoryToShow    = categories_list.value;
-      nameToShow        = names_list.value;
-      descriptionToShow = descriptions_list.value;
-      platformToShow    = platforms_list.value;
+      let categoryToShow    = categories_list.value;
+      let nameToShow        = names_list.value;
+      let descriptionToShow = descriptions_list.value;
+      let platformToShow    = platforms_list.value;
+
+      if (categoryToShow == "All"
+          && nameToShow == "All"
+          && descriptionToShow == "All"
+          && platformToShow == "All")
+      {
+        window.alert ("Please set at least one filter!");
+        return;
+      }
+
+      charts.innerHTML = "";
+
+      var filterString = "";
+
+      if (categoryToShow != "All")      filterString += '&benchmark_category=' + categoryToShow;
+      if (nameToShow != "All")          filterString += '&benchmark_name=' + nameToShow;
+      if (descriptionToShow != "All")   filterString += '&benchmark_description=' + descriptionToShow;
+      if (platformToShow != "All")      filterString += '&benchmark_platform=' + platformToShow;
+
+      document.getElementById ("loader").style.display = "block";
+      getJSON ("https://appstats.tracktion.com/benchmarkapi.php", "request=fetch_results_grouped" + filterString, function (status, results)
+        {
+          document.getElementById ("loader").style.display = "none";
+          currentResults.clear();
+
+          results.forEach (result =>
+                          {
+                            var values = {};
+                            values.name         = result.benchmark_name;
+                            values.category     = result.benchmark_category;
+                            values.description  = result.benchmark_description;
+                            values.platform     = result.benchmark_platform;
+
+                            values.dateTimes  = result.benchmark_time;
+                            values.durations  = result.benchmark_duration;
+                            values.minimums   = result.benchmark_duration_min;
+                            values.maximums   = result.benchmark_duration_max;
+                            values.means      = result.benchmark_duration_mean;       
+                            values.variances  = result.benchmark_duration_variance;
+
+                            currentResults.set (result.benchmark_hash, values);
+                          });
+
+          updateGraphs();
+        });
+    }
+
+    function updateGraphs()
+    {
       showTotal         = show_total_button.checked;
       showMinMaxMean    = show_minmax_button.checked;
       showVariances     = show_variance_button.checked;
 
       charts.innerHTML = "";
-
-      hashAndValues.forEach (function (values, hash)
-      {
-        if ((categoryToShow == "All" || categoryToShow == values.category)
-            && (nameToShow == "All" || nameToShow == values.name)
-            && (descriptionToShow == "All" || descriptionToShow == values.description)
-            && (platformToShow == "All" || platformToShow == values.platform))
-        {
-          addChart (hash, values);
-        }
-      });
+      
+      if (currentResults.size == 0)
+        charts.innerHTML = "No results";
+      else
+        currentResults.forEach ((valueObj, hash) => { addChart (hash, valueObj); });
     }
   </script>
 </body>
